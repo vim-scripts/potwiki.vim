@@ -1,0 +1,40 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1018
+
+If you like to keep notes in plain text files you might like this script.
+potwiki provides functions and mappings for conveniently maintaining 
+a Wiki of text files with vim.
+
+The Wiki is a collection of text files in a single directory. These files
+can contain hyper links to each other in the form of WikiWords.
+
+A WikiWord is a word which starts with an upper case letter and contains
+at least one lower case letter and another upper case letter in this
+order -- it's in 'camel case', e.g.
+
+  ThisIsAWikiWord
+
+Such a WikiWord links to a file of exactly the same name in your
+Wiki directory.
+
+When opening a Wiki file potwiki scans your Wiki directory to find
+which WikiWords are valid links. WikiWords without a corresponding
+file are highlighted as errors (otherwise it doesn't matter).
+
+After installing the plugin see :help potwiki for further documentation.
+
+   The default mappings are defined as follow (By default, <Leader> stands
+   for '\&#039. See |Leader| for more info) :
+
+   <Leader>ww   - open the Wiki HomePage
+   <Leader>wi   - open the Wiki index
+   <Leader>wf   - follow a WikiWord (can be used in any buffer!)
+   <Leader>we   - edit a Wiki file
+
+   The following mappings are present when editing a Wiki file:
+
+   <Leader><Leader> - close the file
+   <CR>             - follow the WikiWord under the cursor
+   <Tab>            - move to the next WikiWord
+   <BS>             - move to the previous WikiWord
+   <Leader>wr       - reload WikiWords
+
