@@ -1,4 +1,4 @@
-"$Id: potwiki.vim,v 1.11 2004/06/29 12:18:49 edwin Exp $
+"$Id: potwiki.vim,v 1.15 2004/07/11 17:12:19 edwin Exp $
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Name:		    potwiki
 " Description:	    Maintain a simple Plain Old Text Wiki
@@ -46,8 +46,8 @@ endfunction
 call s:default('home',"~/Wiki/HomePage")
 call s:default('home_dir',fnamemodify(g:potwiki_home,':p:h'))
 
-call s:default('upper','A-ZÄÖÜ')
-call s:default('lower','a-zäöüß')
+call s:default('upper','A-Z')
+call s:default('lower','a-z')
 call s:default('other','0-9_')
 
 call s:default('autowrite',0)
@@ -82,18 +82,25 @@ function s:PotWikiInit()
   call s:PotWikiMap()
   call s:PotWikiMenu()
   call s:PotWikiAutoCommands()
+
+  au Filetype potwiki call <SID>PotWikiBufferInit()
+  au Syntax potwiki call <SID>PotWikiDefineSyntax()
 endfunction
 
 function s:PotWikiBufferInit()
-  if exists('b:did_potwiki_buffer_init')
-    return
-  endif
-  let b:did_potwiki_buffer_init = 1
+"  if exists('b:did_potwiki_buffer_init')
+"    return
+"  endif
+"  let b:did_potwiki_buffer_init = 1
 
-  let s:potwiki_dir = expand('%:p:h')
-
-  call s:PotWikiDefineSyntax()
   call s:PotWikiBufferMap()
+endfunction
+
+function s:PotWikiDir()
+  if &filetype == 'potwiki'
+    return expand('%:p:h')
+  endif
+  return g:potwiki_dir
 endfunction
 
 function s:PotWikiDefineSyntax()
@@ -143,7 +150,7 @@ function s:PotWikiBuildIgnore()
 endfunction
 
 function s:PotWikiDefineWords()
-  let files=globpath(s:potwiki_dir,"*")
+  let files=globpath(s:PotWikiDir(),"*")
   while files != ""
     let pos = stridx(files,"\n")
     if pos < 0
@@ -166,7 +173,9 @@ function s:PotWikiEdit(file)
     return
   endif
   execute "e ".a:file
-  call s:PotWikiBufferInit()
+  if &filetype != 'potwiki'
+    setlocal filetype=potwiki
+  endif
 endfunction
 
 "----------------------------------------------------------------------
@@ -177,7 +186,7 @@ function s:PotWikiAutoCommands()
   if !has('unix')
     let dir = substitute(dir,'\','/','g')
   endif
-  execute 'au BufNewFile,BufReadPost '.dir.'/* call <SID>PotWikiBufferInit()'
+  execute 'au BufNewFile,BufReadPost '.dir.'/* setf potwiki'
 endfunction
 
 "----------------------------------------------------------------------
@@ -190,6 +199,8 @@ function s:PotWikiMap()
   noremap <unique> <script> <SID>Follow  :call <SID>Follow()<CR>
   noremap <unique> <script> <SID>Close   :call <SID>Close()<CR>
   noremap <unique> <script> <SID>Reload  :call <SID>Reload()<CR>
+  noremap <unique> <script> <SID>NextWord :call <SID>NextWord()<CR>
+  noremap <unique> <script> <SID>PrevWord :call <SID>PrevWord()<CR>
   execute "noremap <unique> <script> <SID>Edit :e ".g:potwiki_home_dir.
     \ g:potwiki_slash
 
@@ -200,6 +211,8 @@ function s:PotWikiMap()
   map <unique> <script> <Plug>PotwikiClose  <SID>Close
   map <unique> <script> <Plug>PotwikiReload <SID>Reload
   map <unique> <script> <Plug>PotwikiEdit   <SID>Edit
+  map <unique> <script> <Plug>PotwikiNext   <SID>NextWord
+  map <unique> <script> <Plug>PotwikiPrev   <SID>PrevWord
 
   if !hasmapto('<Plug>PotwikiHome')
     map <unique> <Leader>ww <Plug>PotwikiHome
@@ -216,12 +229,26 @@ function s:PotWikiMap()
 endfunction
 
 function s:PotWikiBufferMap()
-  execute 'noremap <script> <buffer> <silent> <Tab> /'.s:wordrx.'<CR>'
-  execute 'noremap <script> <buffer> <silent> <BS> ?'.s:wordrx.'<CR>'
-
-  map          <buffer> <silent> <CR>             <Plug>PotwikiCR
-  map <unique> <buffer> <silent> <Leader><Leader> <Plug>PotwikiClose
-  map <unique> <buffer> <silent> <Leader>wr       <Plug>PotwikiReload
+  if exists('b:did_potwiki_buffer_map')
+    return
+  endif
+  let b:did_potwiki_buffer_map = 1
+  
+  if !hasmapto('<Plug>PotwikiNext')
+    map          <buffer> <silent> <Tab>            <Plug>PotwikiNext
+  endif
+  if !hasmapto('<Plug>PotwikiPrev')
+    map          <buffer> <silent> <BS>             <Plug>PotwikiPrev
+  endif
+  if !hasmapto('<Plug>PotwikiCR')
+    map          <buffer> <silent> <CR>             <Plug>PotwikiCR
+  endif
+  if !hasmapto('<Plug>PotwikiClose')
+    map <unique> <buffer> <silent> <Leader><Leader> <Plug>PotwikiClose
+  endif
+  if !hasmapto('<Plug>PotwikiReload')
+    map <unique> <buffer> <silent> <Leader>wr       <Plug>PotwikiReload
+  endif
 endfunction
 
 "----------------------------------------------------------------------
@@ -241,17 +268,12 @@ endfunction
 
 function s:Index()
   execute "e ".g:potwiki_home_dir
-"  call s:PotWikiBufferInit()
 endfunction
 
 function s:Follow()
   let word = expand('<cword>')
   if word =~ s:wordrx
-    if exists('b:did_potwiki_buffer_init')
-      let file = s:potwiki_dir.g:potwiki_slash.word
-    else
-      let file = g:potwiki_home_dir.g:potwiki_slash.word
-    endif
+    let file = s:PotWikiDir().g:potwiki_slash.word
     call s:PotWikiEdit(file)
   else
     echo "Cursor must be on a WikiWord to follow!"
@@ -264,7 +286,7 @@ endfunction
 function s:CR()
   let word = expand('<cword>')
   if word =~ s:wordrx
-    let file = s:potwiki_dir.g:potwiki_slash.word
+    let file = s:PotWikiDir().g:potwiki_slash.word
     call s:PotWikiEdit(file)
   else
     execute "normal! \n"
@@ -281,6 +303,29 @@ endfunction
 function s:Reload()
   call s:PotWikiClearWords()
   call s:PotWikiDefineWords()
+endfunction
+
+function s:SearchWord(cmd)
+  let hl = &hls
+  let lasts = @/
+  set nohls
+  try
+    exe a:cmd
+  catch /Pattern not found/
+    echoh WarningMsg
+    echo "No WikiWord found."
+    echoh None
+  endt
+  let @/ = lasts
+  let &hls = hl
+endfunction
+
+function s:NextWord()
+  call s:SearchWord('/'.s:wordrx)
+endfunction
+
+function s:PrevWord()
+  call s:SearchWord('?'.s:wordrx)
 endfunction
 
 "----------------------------------------------------------------------
@@ -404,7 +449,7 @@ function! s:InstallDocumentation(full_name, revision)
 endfunction
 
 let s:revision=
-    \ substitute("$Revision: 1.11 $",'\$\S*: \([.0-9]\+\) \$','\1','')
+    \ substitute("$Revision: 1.15 $",'\$\S*: \([.0-9]\+\) \$','\1','')
 silent! let s:install_status =
             \ s:InstallDocumentation(expand('<sfile>:p'), s:revision)
 if (s:install_status == 1)
@@ -485,8 +530,8 @@ CONTENT                                                     *potwiki-contents*
    Such a WikiWord links to a file of exactly the same name in your
    Wiki directory.
 
-   By default you can also use digits, underscore and German umlauts in your
-   WikiWords. You can customize this to your needs. |potwiki-customize|
+   By default you can also use digits and underscore in your WikiWords.
+   You can customize this to your needs. |potwiki-customize|
 
    When opening a Wiki file potwiki scans your Wiki directory to find
    which WikiWords are valid links. WikiWords without a corresponding
@@ -528,12 +573,19 @@ CONTENT                                                     *potwiki-contents*
       let loaded_potwiki = 1
 <
 
-    You can define your own color scheme for error highlighting, by setting
+    You can define your own color scheme for potwiki highlighting, by setting
     |highlight| on PotwikiWord and PotwikiWordNotFound groups. For example: 
 >
       highlight PotwikiWord          guifg=darkcyan
       highlight PotwikiWordNotFound  guibg=Red guifg=Yellow
 <
+    When a wiki file is edited the 'filetype' and 'syntax' options are set 
+    to 'potwiki'. You can use autocommands for this filetype to customize
+    your wiki editing. For exmaple:
+>
+      :au Filetype potwiki set sts=4
+<
+
 4.2. Mapping documentation: {{{3 ~
 ---------------------------
                                                    *potwiki-mappings-override*
@@ -568,12 +620,12 @@ CONTENT                                                     *potwiki-contents*
     potwiki_upper                                              *potwiki_upper*
       Upper case characters for WikiWords. Uses the syntax of [ ] atoms
       in regular expressions. 
-      default: 'A-ZÄÖÜ'
+      default: 'A-Z'
 
     potwiki_lower                                              *potwiki_lower*
       Lower case characters for WikiWords. Uses the syntax of [ ] atoms
       in regular expressions. 
-      default: 'a-zäöüß'
+      default: 'a-z'
 
     potwiki_other                                              *potwiki_other*
       Non-letter characters for WikiWords. Uses the syntax of [ ] atoms
