@@ -1,4 +1,4 @@
-"$Id: potwiki.vim,v 1.20 2005/02/22 20:46:34 edwin Exp $
+"$Id: potwiki.vim,v 1.21 2005/03/12 22:34:20 edwin Exp $
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Name:		    potwiki
 " Description:	    Maintain a simple Plain Old Text Wiki
@@ -165,6 +165,12 @@ function s:PotWikiEdit(file)
   endif
 endfunction
 
+function s:PotWikiAutowrite()
+  if &filetype == 'potwiki' && g:potwiki_autowrite
+    execute "update"
+  endif
+endfunction
+
 "----------------------------------------------------------------------
 " Autocommands
 
@@ -173,7 +179,8 @@ function s:PotWikiAutoCommands()
   if !has('unix')
     let dir = substitute(dir,'\','/','g')
   endif
-  execute 'au BufNewFile,BufReadPost '.dir.'/* setf potwiki'
+  " 'setf potwiki' is too weak -- we may have to override a wrong filetype:
+  execute 'au BufNewFile,BufReadPost '.dir.'/* setlocal filetype=potwiki'
 endfunction
 
 "----------------------------------------------------------------------
@@ -188,8 +195,9 @@ function s:PotWikiMap()
   noremap <unique> <script> <SID>Reload  :call <SID>Reload()<CR>
   noremap <unique> <script> <SID>NextWord :call <SID>NextWord()<CR>
   noremap <unique> <script> <SID>PrevWord :call <SID>PrevWord()<CR>
-  execute "noremap <unique> <script> <SID>Edit :e ".g:potwiki_home_dir.
-    \ g:potwiki_slash
+  execute "noremap <unique> <script> <SID>Edit ".
+        \ ":call <SID>PotWikiAutowrite()<CR>".
+        \ ":e ".g:potwiki_home_dir.g:potwiki_slash
 
   map <unique> <script> <Plug>PotwikiHome   <SID>Home
   map <unique> <script> <Plug>PotwikiIndex  <SID>Index
@@ -250,10 +258,12 @@ endfunction
 " Functions suitable for global mapping
 
 function s:Home()
+  call s:PotWikiAutowrite()
   call s:PotWikiEdit(g:potwiki_home)
 endfunction
 
 function s:Index()
+  call s:PotWikiAutowrite()
   execute "e ".g:potwiki_home_dir
 endfunction
 
@@ -261,6 +271,7 @@ function s:Follow()
   let word = expand('<cword>')
   if word =~ s:wordrx
     let file = s:PotWikiDir().g:potwiki_slash.word
+    call s:PotWikiAutowrite()
     call s:PotWikiEdit(file)
   else
     echoh WarningMsg
@@ -276,9 +287,7 @@ function s:CR()
   let word = expand('<cword>')
   if word =~ s:wordrx
     let file = s:PotWikiDir().g:potwiki_slash.word
-    if (g:potwiki_autowrite)
-      execute "update"
-    endif
+    call s:PotWikiAutowrite()
     call s:PotWikiEdit(file)
   else
     execute "normal! \n"
@@ -286,9 +295,7 @@ function s:CR()
 endfunction
 
 function s:Close()
-  if (g:potwiki_autowrite)
-    execute "update"
-  endif
+  call s:PotWikiAutowrite()
   execute "bd"
 endfunction
 
@@ -443,7 +450,7 @@ function! s:InstallDocumentation(full_name, revision)
 endfunction
 
 let s:revision=
-    \ substitute("$Revision: 1.20 $",'\$\S*: \([.0-9]\+\) \$','\1','')
+    \ substitute("$Revision: 1.21 $",'\$\S*: \([.0-9]\+\) \$','\1','')
 silent! let s:install_status =
             \ s:InstallDocumentation(expand('<sfile>:p'), s:revision)
 if (s:install_status == 1)
