@@ -1,4 +1,4 @@
-"$Id: potwiki.vim,v 1.15 2004/07/11 17:12:19 edwin Exp $
+"$Id: potwiki.vim,v 1.16 2004/07/20 19:44:24 edwin Exp $
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Name:		    potwiki
 " Description:	    Maintain a simple Plain Old Text Wiki
@@ -13,6 +13,8 @@
 "                       for the organization of the documentation and
 "                       the automatic documentation installing
 "                       (taken from his script vimspell.vim)
+"                   Michael Fitz <MikeTheGuru@gmx.at>
+"                       NextWord/PrevWord bugfix
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "
 " Section: Documentation 
@@ -308,9 +310,10 @@ endfunction
 function s:SearchWord(cmd)
   let hl = &hls
   let lasts = @/
+  let @/ = s:wordrx
   set nohls
   try
-    exe a:cmd
+    :silent exe 'normal ' a:cmd
   catch /Pattern not found/
     echoh WarningMsg
     echo "No WikiWord found."
@@ -321,11 +324,11 @@ function s:SearchWord(cmd)
 endfunction
 
 function s:NextWord()
-  call s:SearchWord('/'.s:wordrx)
+  call s:SearchWord('n')
 endfunction
 
 function s:PrevWord()
-  call s:SearchWord('?'.s:wordrx)
+  call s:SearchWord('N')
 endfunction
 
 "----------------------------------------------------------------------
@@ -449,7 +452,7 @@ function! s:InstallDocumentation(full_name, revision)
 endfunction
 
 let s:revision=
-    \ substitute("$Revision: 1.15 $",'\$\S*: \([.0-9]\+\) \$','\1','')
+    \ substitute("$Revision: 1.16 $",'\$\S*: \([.0-9]\+\) \$','\1','')
 silent! let s:install_status =
             \ s:InstallDocumentation(expand('<sfile>:p'), s:revision)
 if (s:install_status == 1)
