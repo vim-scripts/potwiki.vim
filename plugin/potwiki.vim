@@ -1,4 +1,4 @@
-"$Id: potwiki.vim,v 1.4 2004/06/20 12:41:59 edwin Exp $
+"$Id: potwiki.vim,v 1.11 2004/06/29 12:18:49 edwin Exp $
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Name:		    potwiki
 " Description:	    Maintain a simple Plain Old Text Wiki
@@ -54,6 +54,9 @@ call s:default('autowrite',0)
 
 call s:default('slash',has('unix') ? '/' : '\')
 
+call s:default('ignore','')
+call s:default('opendirs',0)
+
 "----------------------------------------------------------------------
 " Functions
 
@@ -68,7 +71,13 @@ function s:PotWikiInit()
   "A PotWikiWord must start with an upper case character and contain at
   "least one lower case and another upper case character in that order.
 
-  let s:wordrx = '\<['.upp.']['.nlo.']*['.low.']['.nup.']*['.upp.']['.any.']*\>'
+  let inner = '['.upp.']['.nlo.']*['.low.']['.nup.']*['.upp.']['.any.']*'
+  call s:PotWikiBuildIgnore()
+  if s:ignorerx != ""
+    let s:wordrx = '\C\<\(\('.s:ignorerx.'\)\>\)\@!'.inner.'\>'
+  else
+    let s:wordrx = '\C\<'.inner.'\>'
+  endif
 
   call s:PotWikiMap()
   call s:PotWikiMenu()
@@ -88,6 +97,7 @@ function s:PotWikiBufferInit()
 endfunction
 
 function s:PotWikiDefineSyntax()
+  syntax case match
   execute 'syntax match PotwikiWordNotFound "'.s:wordrx.'"'
 
   call s:PotWikiDefineWords()
@@ -115,6 +125,23 @@ function s:PotWikiClearWords()
   syntax clear PotwikiWord
 endfunction
 
+function s:PotWikiBuildIgnore()
+  let s:ignorerx = ""
+  let words=g:potwiki_ignore
+  while words != ""
+    let pos = stridx(words,",")
+    if pos < 0
+      let pos = strlen(words)
+    endif
+    let word = strpart(words,0,pos)
+    let words = strpart(words,pos+1)
+    if s:ignorerx != ""
+      let s:ignorerx = s:ignorerx.'\|'
+    endif
+    let s:ignorerx = s:ignorerx.word
+  endwhile
+endfunction
+
 function s:PotWikiDefineWords()
   let files=globpath(s:potwiki_dir,"*")
   while files != ""
@@ -126,12 +153,18 @@ function s:PotWikiDefineWords()
     let files = strpart(files,pos+1)
     let word = matchstr(file,s:wordrx.'\%$')
     if word != "" 
-      execute "syntax match PotwikiWord ".'"\<'.word.'\>"'
+      if filereadable(file) || (g:potwiki_opendirs && isdirectory(file))
+	execute "syntax match PotwikiWord ".'"\<'.word.'\>"'
+      endif
     endif
   endwhile
 endfunction
 
 function s:PotWikiEdit(file)
+  if isdirectory(a:file) && !g:potwiki_opendirs
+    echo a:file." is a directory"
+    return
+  endif
   execute "e ".a:file
   call s:PotWikiBufferInit()
 endfunction
@@ -371,7 +404,7 @@ function! s:InstallDocumentation(full_name, revision)
 endfunction
 
 let s:revision=
-    \ substitute("$Revision: 1.4 $",'\$\S*: \([.0-9]\+\) \$','\1','')
+    \ substitute("$Revision: 1.11 $",'\$\S*: \([.0-9]\+\) \$','\1','')
 silent! let s:install_status =
             \ s:InstallDocumentation(expand('<sfile>:p'), s:revision)
 if (s:install_status == 1)
@@ -496,8 +529,8 @@ CONTENT                                                     *potwiki-contents*
 <
 
     You can define your own color scheme for error highlighting, by setting
-    |highlight| on PotwikiWord and PotwikiWordNotFound groups. For example: >
-
+    |highlight| on PotwikiWord and PotwikiWordNotFound groups. For example: 
+>
       highlight PotwikiWord          guifg=darkcyan
       highlight PotwikiWordNotFound  guibg=Red guifg=Yellow
 <
@@ -521,9 +554,9 @@ CONTENT                                                     *potwiki-contents*
     Several variables are checked by the script to customize potwiki
     behavior. You can set them using let in your |vimrc| file.
     Example:
-
+>
         let potwiki_home = "$HOME/MyWiki/HomePage"
-
+<
     potwiki_home                                                *potwiki_home*
       This variable contains the filename of your Wiki HomePage.
       default: $HOME/Wiki/HomePage
@@ -550,6 +583,11 @@ CONTENT                                                     *potwiki-contents*
     potwiki_autowrite                                      *potwiki_autowrite*
       If this is non-zero potwiki always writes a Wiki file when it
       is closed by <Plug>PotwikiClose.
+
+    potwiki_ignore                                            *potwiki_ignore*
+      A comma-separated list of words you don't want potwiki to
+      highlight. Don't include any whitespace in this list.
+      default: ''
 
 ==============================================================================
 6. potwiki bugs  {{{2                                          *potwiki-bugs*
