@@ -1,4 +1,4 @@
-"$Id: potwiki.vim,v 1.16 2004/07/20 19:44:24 edwin Exp $
+"$Id: potwiki.vim,v 1.19 2004/07/21 21:14:10 edwin Exp $
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Name:		    potwiki
 " Description:	    Maintain a simple Plain Old Text Wiki
@@ -90,11 +90,6 @@ function s:PotWikiInit()
 endfunction
 
 function s:PotWikiBufferInit()
-"  if exists('b:did_potwiki_buffer_init')
-"    return
-"  endif
-"  let b:did_potwiki_buffer_init = 1
-
   call s:PotWikiBufferMap()
 endfunction
 
@@ -106,32 +101,22 @@ function s:PotWikiDir()
 endfunction
 
 function s:PotWikiDefineSyntax()
+  syntax clear
   syntax case match
   execute 'syntax match PotwikiWordNotFound "'.s:wordrx.'"'
 
   call s:PotWikiDefineWords()
 
   " Define the default highlighting.
-  " For version 5.7 and earlier: only when not done already
-  " For version 5.8 and later: only when an item doesn't have highlighting yet
-  if version >= 508 || !exists("did_potwiki_syntax_inits")
-    if version < 508
-      let did_potwiki_syntax_inits = 1
-      command -nargs=+ HiLink hi link <args>
-    else
-      command -nargs=+ HiLink hi def link <args>
-    endif
+  hi def link PotwikiWordNotFound Error
+  hi def link PotwikiWord         Identifier
 
-    HiLink PotwikiWordNotFound Error
-    HiLink PotwikiWord         Identifier
-
-    delcommand HiLink
-  endif
   let b:current_syntax = "potwiki"
 endfunction
 
-function s:PotWikiClearWords()
-  syntax clear PotwikiWord
+" external interface
+function PotwikiSyntax()
+  call s:PotWikiDefineSyntax()
 endfunction
 
 function s:PotWikiBuildIgnore()
@@ -278,7 +263,9 @@ function s:Follow()
     let file = s:PotWikiDir().g:potwiki_slash.word
     call s:PotWikiEdit(file)
   else
+    echoh WarningMsg
     echo "Cursor must be on a WikiWord to follow!"
+    echoh None
   endif
 endfunction
 
@@ -303,8 +290,9 @@ function s:Close()
 endfunction
 
 function s:Reload()
-  call s:PotWikiClearWords()
-  call s:PotWikiDefineWords()
+  syntax clear
+  au Syntax potwiki call <SID>PotWikiDefineSyntax()
+  do Syntax potwiki
 endfunction
 
 function s:SearchWord(cmd)
@@ -452,7 +440,7 @@ function! s:InstallDocumentation(full_name, revision)
 endfunction
 
 let s:revision=
-    \ substitute("$Revision: 1.16 $",'\$\S*: \([.0-9]\+\) \$','\1','')
+    \ substitute("$Revision: 1.19 $",'\$\S*: \([.0-9]\+\) \$','\1','')
 silent! let s:install_status =
             \ s:InstallDocumentation(expand('<sfile>:p'), s:revision)
 if (s:install_status == 1)
@@ -587,6 +575,15 @@ CONTENT                                                     *potwiki-contents*
     your wiki editing. For exmaple:
 >
       :au Filetype potwiki set sts=4
+<
+    If you want to be able to switch the highlighting on and off with
+>
+      :syntax on | enable | off
+<
+    put the following line in a file called 'potwiki.vim' in your syntax
+    directory (usually ~/.vim/syntax):
+>
+      call PotwikiSyntax()
 <
 
 4.2. Mapping documentation: {{{3 ~
