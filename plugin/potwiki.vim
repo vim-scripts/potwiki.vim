@@ -1,4 +1,4 @@
-"$Id: potwiki.vim,v 1.19 2004/07/21 21:14:10 edwin Exp $
+"$Id: potwiki.vim,v 1.20 2005/02/22 20:46:34 edwin Exp $
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Name:		    potwiki
 " Description:	    Maintain a simple Plain Old Text Wiki
@@ -276,6 +276,9 @@ function s:CR()
   let word = expand('<cword>')
   if word =~ s:wordrx
     let file = s:PotWikiDir().g:potwiki_slash.word
+    if (g:potwiki_autowrite)
+      execute "update"
+    endif
     call s:PotWikiEdit(file)
   else
     execute "normal! \n"
@@ -284,7 +287,7 @@ endfunction
 
 function s:Close()
   if (g:potwiki_autowrite)
-    execute "w"
+    execute "update"
   endif
   execute "bd"
 endfunction
@@ -440,7 +443,7 @@ function! s:InstallDocumentation(full_name, revision)
 endfunction
 
 let s:revision=
-    \ substitute("$Revision: 1.19 $",'\$\S*: \([.0-9]\+\) \$','\1','')
+    \ substitute("$Revision: 1.20 $",'\$\S*: \([.0-9]\+\) \$','\1','')
 silent! let s:install_status =
             \ s:InstallDocumentation(expand('<sfile>:p'), s:revision)
 if (s:install_status == 1)
@@ -634,7 +637,8 @@ CONTENT                                                     *potwiki-contents*
 
     potwiki_autowrite                                      *potwiki_autowrite*
       If this is non-zero potwiki always writes a Wiki file when it
-      is closed by <Plug>PotwikiClose.
+      is closed by <Plug>PotwikiClose or when you follow another WikiWord.
+      (The file is only written if it has been changed.)
 
     potwiki_ignore                                            *potwiki_ignore*
       A comma-separated list of words you don't want potwiki to
