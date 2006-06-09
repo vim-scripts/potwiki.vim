@@ -1,4 +1,4 @@
-"$Id: potwiki.vim,v 1.21 2005/03/12 22:34:20 edwin Exp $
+" potwiki.vim
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Name:		    potwiki
 " Description:	    Maintain a simple Plain Old Text Wiki
@@ -35,6 +35,11 @@ let loaded_potwiki = 1
 
 let s:save_cpo = &cpo
 set cpo&vim
+
+"----------------------------------------------------------------------
+" Revision
+
+let s:revision = "1.22"
 
 "----------------------------------------------------------------------
 " Configuration
@@ -165,12 +170,6 @@ function s:PotWikiEdit(file)
   endif
 endfunction
 
-function s:PotWikiAutowrite()
-  if &filetype == 'potwiki' && g:potwiki_autowrite
-    execute "update"
-  endif
-endfunction
-
 "----------------------------------------------------------------------
 " Autocommands
 
@@ -179,8 +178,7 @@ function s:PotWikiAutoCommands()
   if !has('unix')
     let dir = substitute(dir,'\','/','g')
   endif
-  " 'setf potwiki' is too weak -- we may have to override a wrong filetype:
-  execute 'au BufNewFile,BufReadPost '.dir.'/* setlocal filetype=potwiki'
+  execute 'au BufNewFile,BufReadPost '.dir.'/* setf potwiki'
 endfunction
 
 "----------------------------------------------------------------------
@@ -195,9 +193,8 @@ function s:PotWikiMap()
   noremap <unique> <script> <SID>Reload  :call <SID>Reload()<CR>
   noremap <unique> <script> <SID>NextWord :call <SID>NextWord()<CR>
   noremap <unique> <script> <SID>PrevWord :call <SID>PrevWord()<CR>
-  execute "noremap <unique> <script> <SID>Edit ".
-        \ ":call <SID>PotWikiAutowrite()<CR>".
-        \ ":e ".g:potwiki_home_dir.g:potwiki_slash
+  execute "noremap <unique> <script> <SID>Edit :e ".g:potwiki_home_dir.
+    \ g:potwiki_slash
 
   map <unique> <script> <Plug>PotwikiHome   <SID>Home
   map <unique> <script> <Plug>PotwikiIndex  <SID>Index
@@ -229,21 +226,11 @@ function s:PotWikiBufferMap()
   endif
   let b:did_potwiki_buffer_map = 1
   
-  if !hasmapto('<Plug>PotwikiNext')
-    map          <buffer> <silent> <Tab>            <Plug>PotwikiNext
-  endif
-  if !hasmapto('<Plug>PotwikiPrev')
-    map          <buffer> <silent> <BS>             <Plug>PotwikiPrev
-  endif
-  if !hasmapto('<Plug>PotwikiCR')
-    map          <buffer> <silent> <CR>             <Plug>PotwikiCR
-  endif
-  if !hasmapto('<Plug>PotwikiClose')
-    map <unique> <buffer> <silent> <Leader><Leader> <Plug>PotwikiClose
-  endif
-  if !hasmapto('<Plug>PotwikiReload')
-    map <unique> <buffer> <silent> <Leader>wr       <Plug>PotwikiReload
-  endif
+  map <buffer> <silent> <Tab>            <Plug>PotwikiNext
+  map <buffer> <silent> <BS>             <Plug>PotwikiPrev
+  map <buffer> <silent> <CR>             <Plug>PotwikiCR
+  map <buffer> <silent> <Leader><Leader> <Plug>PotwikiClose
+  map <buffer> <silent> <Leader>wr       <Plug>PotwikiReload
 endfunction
 
 "----------------------------------------------------------------------
@@ -258,12 +245,10 @@ endfunction
 " Functions suitable for global mapping
 
 function s:Home()
-  call s:PotWikiAutowrite()
   call s:PotWikiEdit(g:potwiki_home)
 endfunction
 
 function s:Index()
-  call s:PotWikiAutowrite()
   execute "e ".g:potwiki_home_dir
 endfunction
 
@@ -271,7 +256,6 @@ function s:Follow()
   let word = expand('<cword>')
   if word =~ s:wordrx
     let file = s:PotWikiDir().g:potwiki_slash.word
-    call s:PotWikiAutowrite()
     call s:PotWikiEdit(file)
   else
     echoh WarningMsg
@@ -287,7 +271,9 @@ function s:CR()
   let word = expand('<cword>')
   if word =~ s:wordrx
     let file = s:PotWikiDir().g:potwiki_slash.word
-    call s:PotWikiAutowrite()
+    if (g:potwiki_autowrite)
+      execute "update"
+    endif
     call s:PotWikiEdit(file)
   else
     execute "normal! \n"
@@ -295,7 +281,9 @@ function s:CR()
 endfunction
 
 function s:Close()
-  call s:PotWikiAutowrite()
+  if (g:potwiki_autowrite)
+    execute "update"
+  endif
   execute "bd"
 endfunction
 
@@ -449,8 +437,6 @@ function! s:InstallDocumentation(full_name, revision)
     return 1
 endfunction
 
-let s:revision=
-    \ substitute("$Revision: 1.21 $",'\$\S*: \([.0-9]\+\) \$','\1','')
 silent! let s:install_status =
             \ s:InstallDocumentation(expand('<sfile>:p'), s:revision)
 if (s:install_status == 1)
