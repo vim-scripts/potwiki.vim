@@ -39,7 +39,7 @@ set cpo&vim
 "----------------------------------------------------------------------
 " Revision
 
-let s:revision = "1.23"
+let s:revision = "1.24"
 
 "----------------------------------------------------------------------
 " Configuration
@@ -102,7 +102,7 @@ function s:PotWikiDir()
   if &filetype == 'potwiki'
     return expand('%:p:h')
   endif
-  return g:potwiki_dir
+  return g:potwiki_home_dir
 endfunction
 
 function s:PotWikiDefineSyntax()
