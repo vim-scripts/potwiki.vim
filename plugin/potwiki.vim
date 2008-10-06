@@ -15,17 +15,19 @@
 "                       (taken from his script vimspell.vim)
 "                   Michael Fitz <MikeTheGuru@gmx.at>
 "                       NextWord/PrevWord bugfix
+"                   Anders Carling
+"                       potwiki_suffix feature
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "
 " Section: Documentation 
 "----------------------------
 "
 " Documentation should be available by ":help potwiki" command, once the
-" script has been copied in you .vim/plugin directory.
+" script has been copied into your .vim/plugin directory.
 "
 " You still can read the documentation at the end of this file. Locate it by
 " searching the "potwiki-contents" string (and set ft=help to have
-" appropriate syntaxic coloration). 
+" appropriate syntactic coloration). 
 "
 
 if exists('loaded_potwiki')
@@ -39,7 +41,7 @@ set cpo&vim
 "----------------------------------------------------------------------
 " Revision
 
-let s:revision = "1.24"
+let s:revision = "1.25"
 
 "----------------------------------------------------------------------
 " Configuration
@@ -50,7 +52,8 @@ function s:default(varname,value)
   endif
 endfunction
 
-call s:default('home',"~/Wiki/HomePage")
+call s:default('suffix','')
+call s:default('home',"~/Wiki/HomePage".g:potwiki_suffix)
 call s:default('home_dir',fnamemodify(g:potwiki_home,':p:h'))
 
 call s:default('upper','A-Z')
@@ -150,10 +153,17 @@ function s:PotWikiDefineWords()
     endif
     let file = strpart(files,0,pos)
     let files = strpart(files,pos+1)
-    let word = matchstr(file,s:wordrx.'\%$')
+    let suffix_len = strlen(g:potwiki_suffix)
+    let file_len = strlen(file)
+    if strpart(file, file_len-suffix_len, suffix_len) == g:potwiki_suffix
+      let word=strpart(file,0,file_len-suffix_len)
+    else
+      let word=""
+    endif
+    let word = matchstr(word,s:wordrx.'\%$')
     if word != "" 
       if filereadable(file) || (g:potwiki_opendirs && isdirectory(file))
-	execute "syntax match PotwikiWord ".'"\<'.word.'\>"'
+        execute "syntax match PotwikiWord ".'"\<'.word.'\>"'
       endif
     endif
   endwhile
@@ -185,7 +195,7 @@ function s:PotWikiAutoCommands()
     let dir = substitute(dir,'\','/','g')
   endif
   " 'setf potwiki' is too weak -- we may have to override a wrong filetype:
-  execute 'au BufNewFile,BufReadPost '.dir.'/* setlocal filetype=potwiki'
+  execute 'au BufNewFile,BufReadPost '.dir.'/*'.g:potwiki_suffix.' setlocal filetype=potwiki'
 endfunction
 
 "----------------------------------------------------------------------
@@ -265,7 +275,7 @@ endfunction
 function s:Follow()
   let word = expand('<cword>')
   if word =~ s:wordrx
-    let file = s:PotWikiDir().g:potwiki_slash.word
+    let file = s:PotWikiDir().g:potwiki_slash.word.g:potwiki_suffix
     call s:PotWikiAutowrite()
     call s:PotWikiEdit(file)
   else
@@ -281,7 +291,7 @@ endfunction
 function s:CR()
   let word = expand('<cword>')
   if word =~ s:wordrx
-    let file = s:PotWikiDir().g:potwiki_slash.word
+    let file = s:PotWikiDir().g:potwiki_slash.word.g:potwiki_suffix
     call s:PotWikiAutowrite()
     call s:PotWikiEdit(file)
   else
@@ -612,9 +622,14 @@ CONTENT                                                     *potwiki-contents*
 >
         let potwiki_home = "$HOME/MyWiki/HomePage"
 <
+    potwiki_suffix                                            *potwiki_suffix*
+      This variable contains a suffix appended to the names of your
+      Wikifiles.
+      default: ''
+
     potwiki_home                                                *potwiki_home*
       This variable contains the filename of your Wiki HomePage.
-      default: $HOME/Wiki/HomePage
+      default: $HOME/Wiki/HomePage + potwiki_suffix
 
     potwiki_home_dir                                        *potwiki_home_dir*
       This variable contains the path of your Wiki directory.
